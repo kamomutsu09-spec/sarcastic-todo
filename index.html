@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>どうせやらないタスク管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff6b6b'/%3E%3Cstop offset='.55' stop-color='%23e84393'/%3E%3Cstop offset='1' stop-color='%236c5ce7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='43' font-size='26' font-weight='900' text-anchor='middle' fill='white' font-family='Arial,sans-serif'%3ESSR%3C/text%3E%3C/svg%3E">
+<meta name="description" content="登録するだけで満足できる、皮肉たっぷりのタスク管理。完了するとガチャで「お祝い」がもらえる。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="どうせやらないタスク管理">
+<meta property="og:description" content="やる気ゼロでも、皮肉でお祝いされる。完了ガチャ・言い訳図鑑・実績つきのタスク管理。">
+<meta property="og:url" content="https://kamomutsu09-spec.github.io/sarcastic-todo/">
+<meta property="og:image" content="https://kamomutsu09-spec.github.io/sarcastic-todo/ogp.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root { --bg:#faf7f2; --fg:#222; --muted:#777; --card:#fff; --accent:#c0392b; --line:#e5dfd5; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1b1a18; --fg:#eee; --muted:#999; --card:#26241f; --accent:#ff7b6b; --line:#3a372f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,"Hiragino Sans","Yu Gothic",sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:2rem; line-height:1.2; font-weight:900; letter-spacing:.02em; margin:0 0 6px; background:linear-gradient(90deg,#ff6b6b,#f39c12 50%,#e84393); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .tagline { margin:0 0 4px; font-weight:700; }
+  body { word-break:auto-phrase; }                 /* 日本語を文節の区切りで折り返す(未対応ブラウザでは無視される) */
+  #celText, #celFlavor, #remark, .sc-quote { text-wrap:balance; }
+  li.done .pri { color:#fff; text-decoration:none; }   /* 完了済みでも優先度バッジの文字を見せる */
+  button { transition:transform .1s, filter .1s; }
+  button:hover { filter:brightness(1.08); }
+  button:active { transform:scale(.96); }
+  li { box-shadow:0 2px 8px rgba(0,0,0,.06); }
+  #shareCard { margin-top:16px; padding:16px; border-radius:16px; color:#fff; background:linear-gradient(135deg,#ff6b6b,#e84393 55%,#6c5ce7); box-shadow:0 8px 24px rgba(232,67,147,.25); }
+  .sc-title { font-size:.8rem; opacity:.85; }
+  .sc-rank { margin:4px 0 8px; font-size:1.4rem; font-weight:900; }
+  .sc-stats { font-size:.85rem; line-height:1.7; }
+  .sc-quote { margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,.5); font-size:.85rem; line-height:1.6; }
+  .shareRow { display:flex; gap:8px; margin-top:8px; }
+  #shareBtn, #celShare { background:#000; color:#fff; border:1px solid #444; }
+  #copyBtn { background:transparent; color:var(--muted); border:1px solid var(--line); }
+  #celShare { margin-right:8px; }
+  #onboard { margin:14px 0; padding:14px; border:2px dashed var(--accent); border-radius:12px; background:var(--card); }
+  #onboard[hidden] { display:none; }
+  #onboard .ob-title { font-weight:800; margin-bottom:6px; }
+  #onboard p { margin:4px 0; font-size:.9rem; }
+  #onboard button { margin-top:8px; }
+  #onboard .ob-note { color:var(--accent); font-size:.8rem; font-weight:700; }
+  .howto p { margin:8px 0; font-size:.9rem; line-height:1.7; }
+  .howto .warn { margin-top:14px; padding:12px; border:2px solid var(--accent); border-radius:10px; }
+  .howto .warn > b { color:var(--accent); }
+  .sub { color:var(--muted); margin:0 0 20px; font-size:.9rem; }
+  form { display:flex; gap:8px; flex-wrap:wrap; }
+  form input[type=text] { flex:1 1 100%; }
+  select, input[type=date] { padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); font-size:.9rem; }
+  form label { display:flex; align-items:center; gap:4px; font-size:.8rem; color:var(--muted); }
+  form button { margin-left:auto; }
+  input[type=text] { flex:1; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); font-size:1rem; }
+  button { padding:10px 14px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-size:1rem; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--muted); padding:4px 8px; font-size:.85rem; }
+  #remark { min-height:1.5em; margin:14px 0; color:var(--accent); font-weight:600; }
+  ul { list-style:none; padding:0; margin:0; display:grid; gap:8px; }
+  li { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:flex; align-items:center; gap:10px; }
+  li.done span { text-decoration:line-through; color:var(--muted); }
+  li span { flex:1; word-break:break-word; }
+  .age { color:var(--muted); font-size:.75rem; }
+  .badge { display:inline-block; margin-right:8px; padding:1px 8px; border-radius:6px; font-size:.8rem; color:#fff; background:#888; }
+  .badge.R { background:#2e86de; }
+  .badge.SR { background:#8e44ad; }
+  .badge.SSR { background:linear-gradient(90deg,#f39c12,#e84393); animation:glow 1s infinite alternate; }
+  @keyframes glow { to { box-shadow:0 0 10px #f39c12; } }
+  #book { margin-top:20px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  #book summary { cursor:pointer; font-weight:600; }
+  .bookhead { margin:14px 0 6px; color:var(--muted); font-size:.8rem; }
+  .bookrow { display:flex; align-items:flex-start; gap:6px; padding:4px 0; font-size:.9rem; }
+  .bookrow .badge { flex:none; margin-right:0; }
+  .bookrow.locked { color:var(--muted); }
+  .due, .excuse { font-size:.75rem; color:var(--muted); }
+  .due.overdue { color:var(--accent); font-weight:600; }
+  .pri { display:inline-block; margin-right:6px; padding:0 6px; border-radius:6px; font-size:.7rem; color:#fff; }
+  .pri.high { background:var(--accent); }
+  .pri.low { background:#888; }
+  details.panel { margin-top:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  details.panel summary { cursor:pointer; font-weight:600; }
+  .wk { margin:6px 0; font-size:.9rem; }
+  .wk.title { font-size:1.1rem; font-weight:700; color:var(--accent); }
+  .confirm { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .confirm button { padding:6px 10px; font-size:.85rem; }
+  .confirm .no { background:transparent; color:var(--muted); border:1px solid var(--line); }
+  #overlay { position:fixed; inset:0; z-index:10; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.55); }
+  #overlay[hidden] { display:none; }
+  #overlay.rank-SSR { background:radial-gradient(circle, rgba(243,156,18,.55), rgba(0,0,0,.8)); }
+  #celCard { position:relative; z-index:1; background:var(--card); border-radius:16px; padding:28px 24px; max-width:420px; width:calc(100% - 32px); text-align:center; animation:pop .5s cubic-bezier(.2,1.6,.4,1); }
+  #overlay.rank-SR #celCard { box-shadow:0 0 24px 4px #8e44ad; }
+  #overlay.rank-SSR #celCard { box-shadow:0 0 48px 12px #f39c12; }
+  /* ---- SSR演出: 放射する光・フラッシュ・揺れ・脈動・タイトルの輝き ---- */
+  #overlay { overflow:hidden; }
+  #overlay.rank-SSR::before { content:""; position:absolute; left:50%; top:50%; width:220vmax; height:220vmax; margin:-110vmax 0 0 -110vmax; pointer-events:none;
+    background:repeating-conic-gradient(rgba(255,215,0,.26) 0 7deg, transparent 7deg 20deg);
+    -webkit-mask-image:radial-gradient(circle closest-side, #000, transparent); mask-image:radial-gradient(circle closest-side, #000, transparent);
+    animation:spin 16s linear infinite; }
+  #overlay.rank-SSR::after { content:""; position:absolute; inset:0; z-index:2; background:#fff; pointer-events:none; animation:flash .7s ease-out forwards; }
+  #overlay.rank-SSR #celCard { animation:pop .5s cubic-bezier(.2,1.6,.4,1), shake .5s .5s, glowpulse 1.4s 1s infinite alternate; }
+  #overlay.rank-SSR #celTitle { background:linear-gradient(90deg,#f39c12,#fff6c8,#e84393,#f39c12); background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:shimmer 2.2s linear infinite; }
+  #overlay.rank-SR #celCard { animation:pop .5s cubic-bezier(.2,1.6,.4,1), glowpulse-sr 1.6s .6s infinite alternate; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes flash { from { opacity:.95; } to { opacity:0; } }
+  @keyframes shake { 0%,100% { transform:translate(0); } 15% { transform:translate(-8px,3px) rotate(-1deg); } 35% { transform:translate(7px,-3px) rotate(1deg); } 55% { transform:translate(-5px,2px); } 75% { transform:translate(4px,-1px); } }
+  @keyframes glowpulse { from { box-shadow:0 0 40px 8px #f39c12; } to { box-shadow:0 0 90px 26px #ffcf5a; } }
+  @keyframes glowpulse-sr { from { box-shadow:0 0 18px 2px #8e44ad; } to { box-shadow:0 0 40px 10px #b57edc; } }
+  @keyframes shimmer { to { background-position:-300% 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    #overlay::before, #overlay::after { display:none; }
+    #overlay.rank-SSR #celCard, #overlay.rank-SR #celCard, #overlay.rank-SSR #celTitle { animation:none; }
+  }
+  @keyframes pop { from { transform:scale(.3) rotate(-6deg); opacity:0; } }
+  #celTitle { font-size:1.4rem; font-weight:800; margin-bottom:8px; }
+  #celBadge { font-size:1.2rem; padding:2px 14px; margin:0 0 12px; }
+  #celText { min-height:4.5em; line-height:1.7; margin:8px 0 16px; }
+  #celFlavor { min-height:3em; margin:-6px 0 16px; color:var(--muted); font-size:.85rem; font-style:italic; line-height:1.6; }
+  #overlay.excuse { background:rgba(20,30,60,.7); }
+  #overlay.excuse #celCard { border:2px dashed var(--muted); }
+  #overlay.excuse.rank-SSR { background:radial-gradient(circle, rgba(243,156,18,.55), rgba(0,0,0,.8)); }
+  .flavor { color:var(--muted); font-size:.8rem; font-style:italic; }
+  #celText { min-height:5.5em; font-size:1.45rem; font-weight:800; line-height:1.6; letter-spacing:.04em; color:var(--accent); }
+  .excuse { font-size:.85rem; font-weight:700; color:var(--accent); }
+  #daily { margin:0 0 16px; padding:10px 12px; border-left:4px solid var(--accent); background:var(--card); border-radius:0 8px 8px 0; font-size:.9rem; }
+  #daily .q { font-weight:700; }
+  #daily .m { margin-top:4px; color:var(--muted); font-size:.8rem; }
+  #notifRow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:-6px 0 14px; }
+  #notifBtn { padding:6px 12px; font-size:.85rem; background:transparent; color:var(--fg); border:1px solid var(--line); }
+  #notifBtn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  #notifBtn:disabled { color:var(--muted); cursor:not-allowed; }
+  #notifNote { color:var(--muted); font-size:.75rem; line-height:1.5; }
+  #overlay.eulogy { background:rgba(0,0,0,.78); }
+  #overlay.eulogy #celCard { border:2px solid var(--muted); }
+  #overlay.eulogy #celText { color:var(--fg); font-size:1.2rem; }
+  #toasts { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:20; display:flex; flex-direction:column; gap:8px; width:calc(100% - 32px); max-width:420px; pointer-events:none; }
+  .toast { background:var(--card); border:1px solid var(--accent); border-radius:10px; padding:10px 12px; font-size:.85rem; box-shadow:0 4px 16px rgba(0,0,0,.3); animation:slide .4s ease-out; }
+  .toast b { color:var(--accent); display:block; margin-bottom:2px; }
+  @keyframes slide { from { transform:translateY(20px); opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { .toast { animation:none; } }
+  #picker { position:fixed; inset:0; z-index:9; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.55); }
+  #picker[hidden] { display:none; }
+  #pickerCard { background:var(--card); border-radius:16px; padding:20px; max-width:440px; width:calc(100% - 32px); max-height:80vh; overflow:auto; }
+  .pickerTitle { font-weight:700; margin-bottom:4px; }
+  .pickerHint { color:var(--muted); font-size:.8rem; margin-bottom:8px; }
+  .opt { display:block; width:100%; text-align:left; margin:6px 0; padding:8px 10px; font-size:.9rem; background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .opt.rand { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .opt:disabled { color:var(--muted); cursor:not-allowed; }
+  #pickerCancel { margin-top:8px; background:transparent; color:var(--muted); border:1px solid var(--line); }
+  #confetti { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  #confetti span { position:absolute; top:-2rem; font-size:1.4rem; animation:fall linear infinite; }
+  @keyframes fall { to { transform:translateY(110vh) rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #confetti { display:none; } #celCard { animation:none; } }
+  #stats { margin-top:20px; color:var(--muted); font-size:.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>どうせやらないタスク管理</h1>
+  <p class="tagline">やる気ゼロでも、皮肉でお祝いされる。</p>
+  <p class="sub">登録するだけで満足できる、効率的なアプリです。</p>
+  <div id="daily"></div>
+  <div id="notifRow">
+    <button id="notifBtn" type="button"></button>
+    <span id="notifNote"></span>
+  </div>
+
+  <form id="form">
+    <input id="input" type="text" placeholder="今度こそやるタスク…" autocomplete="off" required>
+    <label>締切 <input id="due" type="date"></label>
+    <label>優先度
+      <select id="priority">
+        <option value="high">最優先</option>
+        <option value="mid" selected>普通</option>
+        <option value="low">後回し</option>
+      </select>
+    </label>
+    <button>追加</button>
+  </form>
+  <div id="onboard" hidden>
+    <div class="ob-title">はじめての方へ</div>
+    <p>① タスクを追加する(まだ何もしなくて大丈夫)</p>
+    <p>② 完了ボタンを押すと、ガチャで皮肉なお祝いがもらえる</p>
+    <p>③ 押せない日は「言い訳」を選ぶ</p>
+    <p class="ob-note">※ 記録はこのブラウザの中にだけ保存され、ブラウザのデータ削除などの要因で簡単に消えることがあります。(くわしくは、下の「使い方」へ)</p>
+    <button id="sampleBtn" type="button">サンプルのタスクを入れて試す</button>
+  </div>
+  <div id="remark" aria-live="polite"></div>
+  <ul id="list"></ul>
+  <div id="stats"></div>
+  <div id="shareCard"></div>
+  <div class="shareRow">
+    <button id="shareBtn" type="button">𝕏 でシェア</button>
+    <button id="copyBtn" type="button">テキストをコピー</button>
+  </div>
+  <details id="book" class="panel">
+    <summary>お祝い図鑑 <span id="bookCount"></span></summary>
+    <div id="bookBody"></div>
+  </details>
+  <details id="exbook" class="panel">
+    <summary>言い訳図鑑 <span id="exCount"></span></summary>
+    <div id="exBody"></div>
+  </details>
+  <div id="overlay" hidden role="dialog" aria-live="assertive">
+    <div id="confetti"></div>
+    <div id="celCard">
+      <div id="celTitle"></div>
+      <span id="celBadge" class="badge"></span>
+      <p id="celText"></p>
+      <p id="celFlavor"></p>
+      <button id="celShare" type="button" hidden>𝕏 で自慢する</button>
+      <button id="celClose" type="button">閉じる</button>
+    </div>
+  </div>
+  <div id="picker" hidden role="dialog">
+    <div id="pickerCard">
+      <div class="pickerTitle">どの言い訳にする?</div>
+      <div class="pickerHint">引いたことのある言い訳から選べます。新しいのはランダムで。</div>
+      <div id="pickerList"></div>
+      <button id="pickerCancel" type="button">やめる</button>
+    </div>
+  </div>
+  <div id="toasts"></div>
+  <details id="achv" class="panel">
+    <summary>実績 <span id="achCount"></span></summary>
+    <div id="achBody"></div>
+  </details>
+  <details id="weekly" class="panel">
+    <summary>週間成績表 <span id="weeklyTitle"></span></summary>
+    <div id="weeklyBody"></div>
+  </details>
+  <details id="howto" class="panel">
+    <summary>使い方</summary>
+    <div class="howto">
+      <p><b>① タスクを追加</b><br>入力欄にタスクを書いて「追加」。締切と優先度は、必要なときだけ。</p>
+      <p><b>② 完了する</b><br>チェックボックスを押して、出てきた「本当に完了した」を押す。ガチャで皮肉なお祝い(N/R/SR/SSR)が出ます。お祝いは1タスクにつき1回です。</p>
+      <p><b>③ 押せない日は「言い訳」</b><br>未完了のタスクに言い訳を付けられます。引いたことのある言い訳は選べて、新しいものはランダムです。1タスクにつき1回です。</p>
+      <p><b>④ 集める</b><br>お祝い図鑑、言い訳図鑑、実績をコンプリートしましょう。</p>
+      <p><b>⑤ 自慢する</b><br>ページ上の「現在の成績」にある「𝕏 でシェア」で、成績を投稿できます。</p>
+      <p><b>⑥ 通知を受け取る</b><br>ページ上部の「🔔 通知をオンにする」を押して、ブラウザの通知を許可すると、締切、放置日数、毎日の一言をお知らせします。</p>
+      <div class="warn">
+        <b>⚠️ 通知について(必ずお読みください)</b>
+        <p>通知は、<b>このページを開いている間だけ</b>届きます。タブやブラウザを閉じている間は、届きません。</p>
+        <p>・スマホのブラウザでは、ブラウザの通知が出ないことがあります。その場合は、ページ内の表示になります。<br>
+           ・ブラウザの通知設定で「ブロック」されていると、オンにできません。サイトの設定で「許可」にしてください。<br>
+           ・同じ通知は、二度は届きません。</p>
+      </div>
+      <div class="warn">
+        <b>⚠️ データの保存について(必ずお読みください)</b>
+        <p>記録は、<b>このブラウザの中にだけ</b>保存されます。サーバーには送られません。そのため、データは、<b>次のような要因などで簡単に消えることがあります</b>。消えた記録は、元に戻せません。</p>
+        <p>・ブラウザの閲覧データ(サイトデータ・Cookie)を削除したとき<br>
+           ・プライベート(シークレット)ウィンドウで使ったとき(閉じると消えます)<br>
+           ・ブラウザの容量整理が行われたとき<br>
+           ・ブラウザの設定変更やアップデート、端末の初期化などのとき</p>
+        <p>また、<b>別のブラウザや別の端末では、最初からのやり直し</b>になります。バックアップ機能はまだありません。残したい成績は、シェアカードのスクショで保存してください。</p>
+      </div>
+    </div>
+  </details>
+</main>
+
+<script>
+const KEY = "sarcastic-todo";
+const $ = id => document.getElementById(id);
+let tasks = [];
+try { tasks = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) {}
+
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch (e) {} };
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+const onAdd = [
+  "素晴らしい計画ですね。実行されたことはまだありませんが。",
+  "追加しました。これでやった気になれますね。",
+  "明日から本気出す、の予約を承りました。",
+  "新しいタスク!積みタスクがまた一つ増えました。",
+  "意欲は満点です。行動は未評価ですが。",
+];
+// ガチャ: rate は排出率(%)。合計100
+const gacha = [
+  { rank: "N", rate: 60, lines: [
+    "おめでとうございます。たった一つでこの達成感。燃費の良い人生ですね。",
+    "ついに完了です。「ついに」という言葉が、これほど似合う方も珍しい。",
+    "お見事。期限という概念も、久しぶりに顔を立ててもらえました。",
+    "やればできる方だったんですね。問題は、その「やれば」の部分でしたが。",
+    "素晴らしいペースです。この調子なら、来年の今頃には片付いていることでしょう。",
+    "見事な集中力でした。三日前にもお会いしたかったですね。",
+    "おや、動きましたね。電池切れかと思っていました。",
+    "チェックを入れる指先だけは、いつも迷いがありません。",
+    "お疲れさまでした。存在を思い出すところが、一番の山場でしたね。",
+    "着手から完了まで、実に滑らかでした。途中の長い沈黙を除けば。",
+  ], flavors: [
+    "タスク1件の完了を、人生の大事件のように扱う。それがこのアプリの標準仕様です。",
+    "「ついに」は、放置した日数に比例して重くなります。今回はなかなかの重量級です。",
+    "期限を守ったわけではありません。ただ、思い出しただけです。",
+    "「やれば」と「できる」の間には、深い谷があります。今日は珍しく橋が架かったようです。",
+    "このペースの単位は、おそらく「年」です。",
+    "集中力は、締切との距離に反比例して湧き出る資源です。",
+    "故障ではありません。単に、長い休止期間だっただけです。",
+    "片付けるより、チェックを入れるほうが気持ちいい。そんな説もあります。",
+    "思い出した時点で半分終わっている。……というのは、都合のいい作り話です。",
+    "沈黙の期間こそが、このタスクの本体だったのかもしれません。",
+  ]},
+  { rank: "R", rate: 28, lines: [
+    "奇跡です。念のため、今日の空模様を確認しておきましょう。",
+    "あなたがやり遂げると信じていたのは、たぶん未来のあなただけでした。",
+    "立派です。寝かせた時間の分だけ、達成感にも深みが出ましたね。",
+    "計画どおりの完了です。計画を立てた日のあなたが、一番驚いているはずです。",
+    "あなたの「あとでやる」は、本当に「あと」で来るんですね。律儀なことです。",
+    "これで心置きなく、次の先延ばしに取りかかれますね。",
+    "周囲の予想を見事に裏切りました。いい意味で、ですよ。おそらく。",
+  ], flavors: [
+    "奇跡は、そう頻繁に起こりません。だから奇跡と呼ばれるのです。",
+    "信じてくれていたのは、一番の被害者である、未来のあなたでした。",
+    "熟成と腐敗は紙一重です。今回は、ぎりぎり食べられる側でした。",
+    "計画は、立てるもの。実行するものではない。その常識が、今日だけ覆りました。",
+    "「あとで」の「あと」は、日付ではなく雰囲気を指す言葉です。今回は日付に昇格しました。",
+    "完了とは、次の先延ばしのための準備運動に過ぎません。",
+    "周囲の期待が低いほど、裏切りの喜びは大きくなります。",
+  ]},
+  { rank: "SR", rate: 10, lines: [
+    "歴史的快挙です。後世の教科書の、脚注くらいには載るでしょう。",
+    "鮮やかな逆転劇でした。追い詰められてから本気を出す才能は、本物です。",
+    "この完了の立役者は、あなたの意志ではなく締切です。手柄はお譲りしますが。",
+    "何度「明日やる」を唱えたのでしょう。その粘り強さだけは、誰にも真似できません。",
+    "記念すべき瞬間です。あなたの怠惰が、ついに行動に一本取られました。",
+  ], flavors: [
+    "歴史は、たいてい勝者が書きます。今回は、あなたが自分で書いています。",
+    "追い込まれて本気を出す人は、追い込まれるまで本気を出さない人でもあります。",
+    "締切は、あなたの怠惰が唯一勝てなかった相手です。",
+    "「明日」の数だけ、今日の自分は裏切られてきました。それでも続く、不思議な信頼関係です。",
+    "勝負は一本で決まります。ただし再試合は、明日から連日行われます。",
+  ]},
+  { rank: "SSR", rate: 2, lines: [
+    "神が降臨しました。締切のほうは、三日前に昇天していましたが。",
+    "完璧です。どうぞ余韻に浸ってください。次のタスクが、すぐ後ろで待っています。",
+    "伝説の誕生です。一番驚いているのが本人、というのも伝説らしくて結構です。",
+    "この偉業を成し遂げた今、あなたに怖いものはありません。残りのタスクを除けば。",
+  ], flavors: [
+    "神様でも、締切には勝てません。ただし、遅刻の理由は問わないでくれます。",
+    "余韻とは、次のタスクが視界に入るまでの、短い猶予のことです。",
+    "伝説は、語り継がれるうちに話が盛られるもの。今回の盛り分は、ほぼゼロです。",
+    "最強の盾も、未完了タスクの一覧の前では無力です。",
+  ]},
+];
+const onDone = null; // 達成時は rollGacha() を使う
+let seen = {};
+try { seen = JSON.parse(localStorage.getItem(KEY + "-seen")) || {}; } catch (e) {}
+
+function rollGacha() {
+  let r = Math.random() * 100;
+  const tier = gacha.find(g => (r -= g.rate) < 0) || gacha[0];
+  const i = Math.floor(Math.random() * tier.lines.length);
+  const line = tier.lines[i];
+  const id = tier.rank + "-" + i;           // 文言を直しても記録が消えないよう ID で保存
+  seen[id] = (seen[id] || 0) + 1;           // 値は排出回数
+  try { localStorage.setItem(KEY + "-seen", JSON.stringify(seen)); } catch (e) {}
+  const order = { N: 0, R: 1, SR: 2, SSR: 3 };   // シェアカード用に、一番レアなお祝いを記録
+  if (!bestPull || order[tier.rank] >= order[bestPull.rank]) {
+    bestPull = { rank: tier.rank, text: line };
+    try { localStorage.setItem(KEY + "-best", JSON.stringify(bestPull)); } catch (e) {}
+  }
+  return { rank: tier.rank, line, flavor: tier.flavors[i] };
+}
+const totalLines = gacha.reduce((n, g) => n + g.lines.length, 0);
+const onRepeat = [
+  "同じタスクで二度も祝われようとは、図々しい才能ですね。",
+  "再度の完了、恐れ入ります。ですが、お祝いはお一人様一回限りとなっております。",
+  "チェックの連打は運動にはなりますが、運は動きません。",
+  "このタスクは、もう十分にお祝いしました。新しいタスクをどうぞ。",
+];
+const onUndo =["やっぱり終わってなかったんですね。知ってました。"];
+const onDel = [
+  "なかったことにしました。賢明な判断です。",
+  "削除は最強の時短術ですよね。",
+  "諦めも才能です。",
+];
+
+const ageText = t => {
+  const d = Math.floor((Date.now() - t.created) / 86400000);
+  if (d >= 1) return `${d}日も放置中。熟成してますね。`;
+  const h = Math.floor((Date.now() - t.created) / 3600000);
+  return h >= 1 ? `${h}時間放置中` : "できたてほやほや";
+};
+
+// ---- 締切 ----
+const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+// 締切からの遅れ日数(未来なら負)。at を渡すとその日時基準
+const overdueDays = (t, at = new Date()) => {
+  if (!t.due) return 0;
+  const [y, m, d] = t.due.split("-").map(Number);
+  return Math.round((dayStart(at) - new Date(y, m - 1, d).getTime()) / 86400000);
+};
+function dueText(t) {
+  const base = `期限 ${t.due}:`;
+  if (t.done) {
+    const late = t.doneAt ? overdueDays(t, new Date(t.doneAt)) : 0;
+    return base + (late > 0 ? `${late}日遅れで完了。来ただけ偉いです。` : "期限内に完了。偽物ではありませんよね?");
+  }
+  const d = overdueDays(t);
+  if (d < 0) return base + `あと${-d}日。余裕ですね、今のところは。`;
+  if (d === 0) return base + "本日です。奇遇ですね、今日も何もしていないのに。";
+  if (d <= 2) return base + `${d}日遅れ。誤差の範囲です、たぶん。`;
+  if (d <= 6) return base + `${d}日遅れ。締切は参考情報だったんですね。`;
+  if (d <= 29) return base + `${d}日遅れ。もはや締切は思い出です。`;
+  return base + `${d}日遅れ。締切が化石になりつつあります。`;
+}
+
+// ---- 優先度 ----
+const PRI = { high: "最優先", mid: "普通", low: "後回し" };
+function priRemark() {
+  const open = tasks.filter(t => !t.done);
+  const high = open.filter(t => t.priority === "high").length;
+  if (open.length >= 3 && high / open.length >= 0.6)
+    return `最優先が${high}件。全部が最優先なら、何も優先していないのと同じです。`;
+  return "";
+}
+const onAddPri = {
+  high: ["最優先ですか。最優先のまま眠らせる気満々ですね。", "「最優先」の札だけは立派です。中身が追いつくといいですね。"],
+  low: ["後回しと自覚しているのが、せめてもの誠実さです。", "後回し。正直で結構です。実行はされませんが。"],
+};
+
+// ---- 言い訳 ----
+const excuses = [
+  "水星が逆行していた。たぶん。",
+  "まず環境を整えるところから始めた。環境を整える準備は、まだ整っていない。",
+  "やる気を充電中。現在の残量、3%。",
+  "本気を出すと世界が変わってしまうので、あえて抑えている。",
+  "手始めに机を片付けたら、それだけで一日が終わった。",
+  "あえて寝かせている。物事には熟成の時間が必要だ。",
+  "もっと大事な用事があった気がする。中身は思い出せない。",
+  "今やってしまうと、未来の自分の出番がなくなる。",
+  "下調べのつもりが、気づけば三時間、無関係な記事を読んでいた。",
+  "締切とは目安であって、約束ではないと解釈している。",
+  "取りかかろうとした瞬間、無性に部屋を掃除したくなった。",
+  "中途半端は嫌なので、完璧にできる日を待っている。",
+  // ↓ 番号(図鑑の記録)を保つため、追加分は末尾に足す
+  "「あと5分」のつもりで目を閉じたら、朝になっていた。",
+  "やる前に、まず「やり方」を極めるべきだと気づいた。",
+  "実はもう、頭の中では完成している。",
+  "宇宙の真理に触れてしまい、タスクの意味がわからなくなった。",
+  "なんとなく、今日ではない気がした。",
+];
+// excuses と同じ並びのレア度
+const excuseRanks = ["N", "N", "N", "R", "N", "N", "R", "R", "N", "R", "N", "SR", "SR", "SR", "SSR", "SSR", "N"];
+const onExcuse = [
+  "本日の言い訳、受理しました。もっともらしさは満点です。",
+  "言い訳を発行しました。これでタスクは無実です。",
+  "立派な言い訳です。その創造力をタスクに回せれば…。",
+];
+let excuseSeen = {};
+try { excuseSeen = JSON.parse(localStorage.getItem(KEY + "-excuses")) || {}; } catch (e) {}
+
+const line = (cls, text) => { const d = document.createElement("div"); d.className = cls; d.textContent = text; return d; };
+
+// ---- 完了確認 + 演出 ----
+const confirming = new Set();   // 「本当に完了した?」の確認待ちタスク(保存はしない)
+const askConfirm = [
+  "本当に終わりましたか?確認ボタンを押してください。証拠はいりませんが、良心は必要です。",
+  "チェックしただけじゃ完了になりませんよ。本当にやりましたか?",
+];
+const onCancelConfirm = [
+  "正直でよろしい。嘘をつかないだけ、まだ可愛げがあります。",
+  "ですよね。知ってました。",
+];
+const CELEB = {
+  N:   { title: "完了…?",         confetti: 8 },
+  R:   { title: "完了!",          confetti: 18 },
+  SR:  { title: "大成功!?",       confetti: 32 },
+  SSR: { title: "★ 伝説の完了 ★", confetti: 100 },
+};
+let celTimer = null;
+function closeCelebrate() {
+  clearInterval(celTimer);
+  $("overlay").hidden = true;
+  $("confetti").innerHTML = "";
+}
+// 文字を1文字ずつ表示。終わったら done を呼ぶ
+function typeInto(el, text, ms, done) {
+  let n = 0;
+  el.textContent = "";
+  clearInterval(celTimer);
+  if (!text) { if (done) done(); return; }
+  celTimer = setInterval(() => {
+    el.textContent = text.slice(0, ++n);
+    if (n >= text.length) { clearInterval(celTimer); if (done) done(); }
+  }, ms);
+}
+// 演出の共通部分(お祝いと言い訳で共用)
+function showOverlay({ cls, title, badgeClass, badgeText, text, flavor, emojis, count, share }) {
+  const ov = $("overlay");
+  ov.className = cls;
+  $("celTitle").textContent = title;
+  $("celBadge").className = "badge " + badgeClass;
+  $("celBadge").textContent = badgeText;
+  $("celFlavor").textContent = "";
+  const c = $("confetti");
+  c.innerHTML = "";
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement("span");
+    s.textContent = pick(emojis);
+    s.style.left = Math.random() * 100 + "%";
+    s.style.animationDelay = Math.random() * 1.2 + "s";
+    s.style.animationDuration = 2 + Math.random() * 2 + "s";
+    c.append(s);
+  }
+  if (cls.includes("rank-SSR") && navigator.vibrate) navigator.vibrate([80, 40, 160, 40, 240]);   // スマホはSSRで震える
+  const sb = $("celShare");                 // SR/SSRだけ「自慢する」ボタンを出す
+  sb.hidden = !share;
+  sb.onclick = () => openShare(share);
+  ov.hidden = false;
+  typeInto($("celText"), text, 45, () => typeInto($("celFlavor"), flavor, 30));
+}
+function celebrate(rank, text, flavor) {
+  showOverlay({
+    cls: "rank-" + rank, title: CELEB[rank].title,
+    badgeClass: rank, badgeText: rank, text, flavor,
+    share: rank === "SR" || rank === "SSR" ? `【${rank}】${text}\n#どうせやらないタスク管理` : "",
+    emojis: rank === "SSR" ? ["🎉", "✨", "🎊", "⭐", "💫", "🌟"] : ["🎉", "✨", "🎊", "⭐"],
+    count: CELEB[rank].confetti,
+  });
+}
+
+// 言い訳ごとの解説(excuses と同じ並び。図鑑でも見られる)
+const excuseFlavors = [
+  "天体の動きは便利です。責任の所在を、まるごと宇宙に預けられますから。",
+  "準備のための準備。先延ばしが、最も勤勉な顔をする瞬間です。",
+  "スマホの充電は欠かさないのに。ちなみにこの残量表示、ここ数か月動いていません。",
+  "世界はいまだ平和です。その本気が観測された記録は、どこにもありません。",
+  "片付けは、罪悪感の最も少ない逃げ道。机だけが、日に日に美しくなっていきます。",
+  "ワインやカレーと違い、タスクは寝かせても美味しくなりません。傷むだけです。",
+  "その「大事な用事」の正体は、たいてい「やりたくない気持ち」です。",
+  "ご心配なく。未来の自分は、今の自分を恨む準備で手一杯です。",
+  "タブは増えました。タスクは一歩も進んでいません。",
+  "その解釈を、締切を決めた方の前で披露する勇気はおありですか。",
+  "試験前夜に模様替えを始める、あの現象です。人類共通の持病と言えます。",
+  "完璧な日は来ません。来るのは、締切だけです。",
+  "布団の中の5分は、現実の1時間に換算されます。",
+  "準備が本番を食べてしまうタイプですね。方法論にだけは、もう誰よりもお詳しいはず。",
+  "頭の中で完成したものを、世間では「未着手」と呼びます。",
+  "悟りと現実逃避は、外から見ると見分けがつきません。",
+  "「なんとなく」は、あらゆる言い訳の行き着く先。反論の余地がない分、最強です。",
+];
+const excuseTitle = { N: "言い訳を受理しました", R: "なかなかの言い訳です", SR: "見事な言い訳!", SSR: "★ 伝説の言い訳 ★" };
+// ガチャと同じ排出率でレア度を決め、そのレア度の言い訳から1つ選ぶ
+function rollExcuse() {
+  let r = Math.random() * 100;
+  const tier = gacha.find(g => (r -= g.rate) < 0) || gacha[0];
+  return pick(excuses.map((_, i) => i).filter(i => excuseRanks[i] === tier.rank));
+}
+// ---- 回数の記録(実績の判定に使う)----
+let counters = {};
+try { counters = JSON.parse(localStorage.getItem(KEY + "-count")) || {}; } catch (e) {}
+const bump = k => {
+  counters[k] = (counters[k] || 0) + 1;
+  try { localStorage.setItem(KEY + "-count", JSON.stringify(counters)); } catch (e) {}
+};
+
+// ---- 今日の一言 + 訪問日数 ----
+const quotes = [
+  "明日できることは、明日に回す。今日の自分を甘やかす、最も確実な方法です。",
+  "千里の道も、一歩目を踏み出さなければ、ただの地図です。",
+  "タスクリストとは、やる気だけが先に旅立った場所の記録です。",
+  "計画を立てた瞬間、人は目標の7割を達成した気になります。残りの3割は、永遠に気になるだけです。",
+  "「忙しい」は、先延ばしの最も上品な言い換えです。",
+  "締切は、人類が発明した最も効果的なやる気です。",
+  "完璧主義者は、完璧に始めないことで、完璧に失敗を避けます。",
+  "やる気は、待っていても出ません。出ないまま、夜になります。",
+  "今日のあなたは、昨日のあなたが言った「明日の自分」です。期待には応えていますか。",
+  "優先順位をつけるとは、何を後回しにするか選ぶ作業です。あなたの得意分野ですね。",
+  "整理整頓は、やるべきことから目を逸らす、最も上品な手段です。",
+  "小さな一歩の積み重ねが、大きな成果になります。一歩目を踏み出した場合に限りますが。",
+  "休憩は大切です。あなたの場合、休憩の合間に、少しだけ作業があるだけで。",
+  "時間は誰にでも平等です。使い方の差は、主にタブの数に表れます。",
+];
+let visits = [];
+try { visits = JSON.parse(localStorage.getItem(KEY + "-visits")) || []; } catch (e) {}
+const todayStr = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+})();
+const prevVisit = visits[visits.length - 1];
+const visitGap = prevVisit && prevVisit !== todayStr ? Math.round((new Date(todayStr) - new Date(prevVisit)) / 86400000) : 0;
+if (prevVisit !== todayStr) {
+  visits.push(todayStr);
+  try { localStorage.setItem(KEY + "-visits", JSON.stringify(visits)); } catch (e) {}
+}
+function renderDaily() {
+  const box = $("daily");
+  box.innerHTML = "";
+  const dayNo = Math.floor(new Date(todayStr).getTime() / 86400000);
+  box.append(line("q", "今日の一言:" + quotes[dayNo % quotes.length]));
+  let m = `${visits.length}日目の訪問です。`;
+  if (visits.length === 1) m = "初めまして。放置の世界へようこそ。";
+  else if (visitGap >= 2) m += `${visitGap}日ぶりですね。タスクは、あなたを待たずに熟成しておりました。`;
+  box.append(line("m", m));
+}
+
+// ---- 実績 ----
+let ach = {};
+try { ach = JSON.parse(localStorage.getItem(KEY + "-ach")) || {}; } catch (e) {}
+const ageDays = t => (Date.now() - t.created) / 86400000;
+const achievements = [
+  { id: "first-done", name: "はじめの一歩", hint: "タスクを1つ完了する", msg: "歴史が動きました。教科書に載るかは未定です。", test: () => (counters.done || 0) >= 1 },
+  { id: "done-5", name: "意外と働く人", hint: "タスクを5つ完了する", msg: "何かの間違いでは、と疑うところから始めましょう。", test: () => (counters.done || 0) >= 5 },
+  { id: "done-20", name: "習慣化の兆し(たぶん気のせい)", hint: "タスクを20個完了する", msg: "継続は力なり。継続できていれば、の話ですが。", test: () => (counters.done || 0) >= 20 },
+  { id: "added-10", name: "計画だけは一流", hint: "タスクを10個追加する", msg: "追加するだけで満足できる。それも立派な才能です。", test: () => (counters.added || 0) >= 10 },
+  { id: "excuse-1", name: "言い訳デビュー", hint: "言い訳を1回使う", msg: "ようこそ、創造的な逃避の世界へ。", test: () => (counters.excuse || 0) >= 1 },
+  { id: "excuse-all", name: "言い訳の達人", hint: "言い訳図鑑をコンプする", msg: "その創造力をタスクに向ければ、とっくに終わっています。", test: () => Object.keys(excuseSeen).length >= excuses.length },
+  { id: "ssr", name: "持っている人", hint: "SSRのお祝いを引く", msg: "運は使い果たしたはずですが、タスクはまだ残っています。", test: () => Object.keys(seen).some(k => k.startsWith("SSR-")) },
+  { id: "book-all", name: "お祝いコンプリート", hint: "お祝い図鑑をコンプする", msg: "お祝いされたい一心で完了を重ねた努力に、敬意を。", test: () => Object.keys(seen).filter(k => /^(N|R|SR|SSR)-\d+$/.test(k)).length >= totalLines },
+  { id: "neglect-7", name: "熟成の達人", hint: "7日以上放置したタスクを持つ", msg: "寝かせれば美味しくなる、と信じている方にぴったりです。", test: () => tasks.some(t => !t.done && !t.sample && ageDays(t) >= 7) },
+  { id: "neglect-30", name: "化石の発掘者", hint: "30日以上放置したタスクを持つ", msg: "それはもうタスクではなく、遺跡です。", test: () => tasks.some(t => !t.done && !t.sample && ageDays(t) >= 30) },
+  { id: "del-5", name: "断捨離の人", hint: "タスクを5つ削除する", msg: "諦めも才能です。身軽になりましたね。", test: () => (counters.del || 0) >= 5 },
+  { id: "visit-7", name: "通い詰めた人", hint: "7日間アプリを開く", msg: "タスクを片付けた日より、アプリを開いた日のほうが多そうです。", test: () => visits.length >= 7 },
+  { id: "all-high", name: "全部が最優先", hint: "最優先だらけにする", msg: "優先順位という概念に、そっとお別れを告げましょう。", test: () => priRemark() !== "" },
+];
+function pushToast(title, body) {
+  const el = document.createElement("div");
+  el.className = "toast";
+  const b = document.createElement("b");
+  b.textContent = title;
+  el.append(b, body);
+  $("toasts").append(el);
+  setTimeout(() => el.remove(), 6000);
+}
+function toast(a) { pushToast(`🏆 実績解除:${a.name}`, a.msg); }
+function checkAchievements() {
+  let changed = false;
+  achievements.forEach(a => {
+    if (!ach[a.id] && a.test()) { ach[a.id] = Date.now(); changed = true; toast(a); }
+  });
+  if (changed) { try { localStorage.setItem(KEY + "-ach", JSON.stringify(ach)); } catch (e) {} }
+  renderAch();
+}
+function renderAch() {
+  const body = $("achBody");
+  body.innerHTML = "";
+  let got = 0;
+  achievements.forEach(a => {
+    const on = !!ach[a.id];
+    if (on) got++;
+    const row = document.createElement("div");
+    row.className = "bookrow" + (on ? "" : " locked");
+    const box = document.createElement("div");
+    box.append(line("", on ? `🏆 ${a.name}` : `🔒 ？？？(${a.hint})`));
+    if (on) box.append(line("flavor", a.msg));
+    row.append(box);
+    body.append(row);
+  });
+  $("achCount").textContent = `${got}/${achievements.length}`;
+}
+
+// ---- 削除の弔辞 ----
+function eulogy(t) {
+  const d = Math.floor(ageDays(t));
+  const name = `「${t.text}」`;
+  if (t.done) return { text: `${name}は、任務を全うして旅立ちました。`, flavor: "完了したタスクを消すのは、片付けではなく、思い出の整理です。" };
+  if (d < 1) return { text: `${name}は、生まれたその日に旅立ちました。`, flavor: "存在した時間は短くとも、「追加した」という満足感は確かに残りました。" };
+  if (d < 3) return { text: `${name}は、${d}日の短い生涯でした。`, flavor: "まだ何も始まっていませんでした。それがせめてもの救いです。" };
+  if (d < 7) return { text: `${name}は、${d}日間、静かに待ち続けて旅立ちました。`, flavor: "最後まで、あなたが来る日を信じていたようです。" };
+  if (d < 30) return { text: `${name}は、${d}日に及ぶ放置の末、安らかに眠りました。`, flavor: "放置期間が長いほど、削除は「解放」と呼ばれます。" };
+  return { text: `${name}は、${d}日という長きにわたり、あなたを見守り続けました。`, flavor: "その忍耐に、深い敬意を。……そして少しの、後ろめたさを。" };
+}
+function showEulogy(t) {
+  const e = eulogy(t);
+  showOverlay({ cls: "eulogy", title: "お別れの言葉", badgeClass: "", badgeText: "合掌", text: e.text, flavor: e.flavor, emojis: ["🕊️", "🌸", "🕯️"], count: 10 });
+}
+
+// ---- シェア(X) ----
+const SITE_URL = "https://kamomutsu09-spec.github.io/sarcastic-todo/";   // 公開先が決まったら、ここを合わせる
+const shareUrl = () => (location.protocol.startsWith("http") ? location.href.split("#")[0] : SITE_URL);
+let bestPull = null;
+try { bestPull = JSON.parse(localStorage.getItem(KEY + "-best")); } catch (e) {}
+const wlen = s => [...s].reduce((n, c) => n + (c.charCodeAt(0) > 255 ? 2 : 1), 0);   // Xの文字数(全角は2)の目安
+
+function summaryData() {
+  const total = tasks.length;
+  const done = tasks.filter(t => t.done).length;
+  const w = weekStats();
+  return {
+    total, done, pct: total ? Math.round(done / total * 100) : 0,
+    rank: w.rank, oldest: w.oldest,
+    ach: Object.keys(ach).length,
+    book: Object.keys(seen).filter(k => /^(N|R|SR|SSR)-\d+$/.test(k)).length,
+    ex: Object.keys(excuseSeen).length,
+  };
+}
+function shareText() {
+  const s = summaryData();
+  const best = bestPull ? `ベストお祝い【${bestPull.rank}】${bestPull.text}` : "";
+  const lines = [
+    "【どうせやらないタスク管理】",
+    `称号:${s.rank}`,
+    `達成率 ${s.pct}%(${s.done}/${s.total}) / 最長放置 ${s.oldest}日`,
+    `実績 ${s.ach}/${achievements.length} ・ お祝い ${s.book}/${totalLines} ・ 言い訳 ${s.ex}/${excuses.length}`,
+  ];
+  const tag = "#どうせやらないタスク管理";
+  if (best && wlen([...lines, best, tag].join("\n")) <= 250) lines.push(best);   // 長すぎるときはベストを省く
+  lines.push(tag);
+  return lines.join("\n");
+}
+function openShare(text) {
+  const u = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(shareUrl());
+  window.open(u, "_blank", "noopener");
+}
+function renderShare() {
+  const s = summaryData();
+  const card = $("shareCard");
+  card.innerHTML = "";
+  card.append(line("sc-title", "どうせやらないタスク管理 ─ 現在の成績"));
+  card.append(line("sc-rank", s.rank));
+  card.append(line("sc-stats", `達成率 ${s.pct}%(${s.done}/${s.total}) ・ 最長放置 ${s.oldest}日`));
+  card.append(line("sc-stats", `実績 ${s.ach}/${achievements.length} ・ お祝い ${s.book}/${totalLines} ・ 言い訳 ${s.ex}/${excuses.length}`));
+  if (bestPull) card.append(line("sc-quote", `ベストお祝い【${bestPull.rank}】${bestPull.text}`));
+}
+
+// ---- 初見向けサンプル ----
+function addSamples() {
+  const day = 86400000, now = Date.now();
+  const ymd = ms => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  tasks.unshift(
+    { text: "部屋の掃除", done: false, created: now - 30 * day, due: null, priority: "mid", sample: true },
+    { text: "レポートを書く", done: false, created: now - 10 * day, due: ymd(now - 3 * day), priority: "high", sample: true },
+    { text: "今度こそ運動を始める", done: false, created: now - 2 * day, due: null, priority: "low", sample: true },
+  );
+  bump("onboarded");
+  say("サンプルを入れました。まずは完了ボタンを押してみてください。");
+  save(); render();
+}
+
+// ---- 通知(締切・放置日数・毎日の一言)----
+let notifOn = false;
+try { notifOn = JSON.parse(localStorage.getItem(KEY + "-notif")) === true; } catch (e) {}
+let notified = {};   // 通知済みの印(同じ通知を繰り返さない)
+try { notified = JSON.parse(localStorage.getItem(KEY + "-notified")) || {}; } catch (e) {}
+const notifSupported = "Notification" in window;
+const notifActive = () => notifOn && notifSupported && Notification.permission === "granted";
+const nowYmd = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+function saveNotif() {
+  try {
+    localStorage.setItem(KEY + "-notif", JSON.stringify(notifOn));
+    localStorage.setItem(KEY + "-notified", JSON.stringify(notified));
+  } catch (e) {}
+}
+const lateTail = { 1: "誤差の範囲です、たぶん。", 3: "締切は参考情報だったんですね。", 7: "もはや締切は思い出です。", 30: "締切が化石になりつつあります。" };
+const ageTail = { 3: "そろそろ、寝かせ終わるころです。", 7: "熟成が順調に進んでいます。", 30: "もう化石です。発掘しますか?" };
+
+function renderNotif() {
+  const btn = $("notifBtn"), note = $("notifNote");
+  if (!notifSupported) {
+    btn.disabled = true; btn.className = ""; btn.textContent = "🔕 通知は使えません";
+    note.textContent = "このブラウザは通知に対応していません。";
+    return;
+  }
+  if (Notification.permission === "denied") {
+    btn.className = ""; btn.textContent = "🔕 通知がブロックされています";
+    note.textContent = "ブラウザのサイト設定で、通知を「許可」にすると使えます。";
+    return;
+  }
+  const on = notifActive();
+  btn.className = on ? "on" : "";
+  btn.textContent = on ? "🔔 通知:オン" : "🔕 通知をオンにする";
+  note.textContent = on
+    ? "締切・放置・毎日の一言をお知らせします。ページを開いている間だけ動きます。(押すとオフ)"
+    : "締切・放置日数・毎日の一言を、通知でお知らせします。ページを開いている間だけ動きます。";
+}
+function sendNative(title, body, tag) {
+  try {
+    const n = new Notification(title, { body, tag });
+    n.onclick = () => { window.focus(); n.close(); };
+    return true;
+  } catch (e) { return false; }   // スマホ版Chromeなどは new Notification が使えない
+}
+function fireNotice(title, body, tag) {
+  // タブを見ているときはページ内の通知、裏にいるときはブラウザの通知
+  if (document.hidden || !document.hasFocus()) { if (!sendNative(title, body, tag)) pushToast("🔔 " + title, body); }
+  else pushToast("🔔 " + title, body);
+}
+async function toggleNotif() {
+  if (!notifSupported) return;
+  if (notifActive()) {
+    notifOn = false; saveNotif(); renderNotif();
+    say("通知をオフにしました。静かな放置生活をどうぞ。");
+    return;
+  }
+  if (Notification.permission === "denied") {
+    say("通知がブロックされています。ブラウザのサイト設定から許可してください。");
+    renderNotif();
+    return;
+  }
+  let p = Notification.permission;
+  if (p !== "granted") { try { p = await Notification.requestPermission(); } catch (e) { p = "denied"; } }
+  if (p === "granted") {
+    notifOn = true; saveNotif(); renderNotif();
+    say("通知をオンにしました。これで、放置も遅刻もお知らせできます。");
+    sendNative("通知をオンにしました", "これで、放置も遅刻もお知らせできます。", "welcome");
+    checkNotifications();
+  } else {
+    renderNotif();
+    say("通知は許可されませんでした。必要になったら、また押してください。");
+  }
+}
+function checkNotifications() {
+  if (!notifActive()) return;
+  const biggest = (v, list) => list.filter(b => v >= b).pop();   // 超えた区切りのうち、一番大きいもの
+  const jobs = [];
+  tasks.forEach(t => {
+    if (t.done || t.sample) return;
+    const id = t.created;
+    if (t.due) {
+      const late = overdueDays(t);
+      if (late === 0) jobs.push({ key: `due0:${id}`, title: `締切:${t.text}`, body: "本日が期限です。奇遇ですね、今日も何もしていないのに。" });
+      else if (late > 0) {
+        const b = biggest(late, [1, 3, 7, 30]);
+        jobs.push({ key: `late:${id}:${b}`, title: `締切:${t.text}`, body: `${late}日遅れ。${lateTail[b]}` });
+      }
+    }
+    const age = Math.floor(ageDays(t));
+    const ab = biggest(age, [3, 7, 30]);
+    if (ab) jobs.push({ key: `age:${id}:${ab}`, title: `${t.text}(放置${age}日)`, body: ageTail[ab] });
+  });
+  const open = tasks.filter(t => !t.done && !t.sample).length;
+  if (open > 0) {
+    const today = nowYmd();
+    const dayNo = Math.floor(new Date(today).getTime() / 86400000);
+    jobs.push({ key: `daily:${today}`, title: "今日の一言", body: `未完了が${open}件。${quotes[dayNo % quotes.length]}` });
+  }
+  let fired = 0;
+  for (const j of jobs) {
+    if (notified[j.key]) continue;
+    if (fired >= 3) break;                 // 一度に出すのは3件まで。残りは次の確認(1分後)に回す
+    notified[j.key] = Date.now();
+    fireNotice(j.title, j.body, j.key);
+    fired++;
+  }
+  if (fired) saveNotif();
+}
+
+// ---- 言い訳の選択 ----
+function applyExcuse(t, i) {
+  t.excuse = excuses[i];
+  t.excuseRank = excuseRanks[i];
+  bump("excuse");
+  excuseSeen[i] = (excuseSeen[i] || 0) + 1;
+  try { localStorage.setItem(KEY + "-excuses", JSON.stringify(excuseSeen)); } catch (e) {}
+  closePicker();
+  say(pick(onExcuse)); showExcuse(i); save(); render();
+}
+function closePicker() { $("picker").hidden = true; }
+function openPicker(t) {
+  const list = $("pickerList");
+  list.innerHTML = "";
+  const rand = document.createElement("button");
+  rand.type = "button"; rand.className = "opt rand";
+  rand.textContent = "🎲 ランダムで引く(レア度あり。新しい言い訳が出るかも)";
+  rand.onclick = () => applyExcuse(t, rollExcuse());
+  list.append(rand);
+  excuses.forEach((ex, i) => {
+    const n = excuseSeen[i] || 0;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "opt";
+    b.textContent = `[${excuseRanks[i]}] ` + (n ? ex : `？？？(未発見 No.${i + 1})`);
+    b.disabled = !n;                       // 未発見はランダムでしか出せない
+    b.onclick = () => applyExcuse(t, i);
+    list.append(b);
+  });
+  $("picker").hidden = false;
+}
+
+function showExcuse(i) {
+  showOverlay({
+    cls: "excuse rank-" + excuseRanks[i], title: excuseTitle[excuseRanks[i]],
+    badgeClass: excuseRanks[i], badgeText: excuseRanks[i],
+    text: excuses[i], flavor: excuseFlavors[i],
+    share: excuseRanks[i] === "SR" || excuseRanks[i] === "SSR" ? `言い訳【${excuseRanks[i]}】${excuses[i]}\n#どうせやらないタスク管理` : "",
+    emojis: ["💭", "💤", "🙈", "🌀"], count: CELEB[excuseRanks[i]].confetti,
+  });
+}
+
+function say(m, rank) {
+  const el = $("remark");
+  el.textContent = "";
+  if (rank) {
+    const b = document.createElement("span");
+    b.className = "badge " + rank;
+    b.textContent = rank;
+    el.append(b);
+  }
+  el.append(m);
+}
+
+function render() {
+  const ul = $("list");
+  ul.innerHTML = "";
+  tasks.forEach(t => {
+    const li = document.createElement("li");
+    if (t.done) li.className = "done";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = t.done;
+    cb.onchange = () => {
+      if (cb.checked && !t.done) {          // 未完了→チェック: 完了にはせず、確認待ちにする
+        cb.checked = false;
+        if (confirming.has(t)) confirming.delete(t);
+        else { confirming.add(t); say(pick(askConfirm)); }
+        render();
+        return;
+      }
+      t.done = false; delete t.doneAt;      // 完了→チェックを外す: そのまま未完了に戻す
+      say(pick(onUndo));
+      save(); render();
+    };
+    const span = document.createElement("span");
+    span.textContent = t.text;
+    const box = document.createElement("div");
+    box.style.flex = "1";
+    const title = document.createElement("div");
+    if (t.priority === "high" || t.priority === "low") {
+      const p = document.createElement("span");
+      p.className = "pri " + t.priority;
+      p.textContent = PRI[t.priority];
+      title.append(p);
+    }
+    title.append(span);
+    box.append(title);
+    if (!t.done) box.append(line("age", ageText(t)));
+    if (t.due) box.append(line("due" + (!t.done && overdueDays(t) > 0 ? " overdue" : ""), dueText(t)));
+    if (t.excuse) box.append(line("excuse", `言い訳${t.excuseRank ? `[${t.excuseRank}]` : ""}:` + t.excuse));
+    if (confirming.has(t)) {
+      const c = document.createElement("div");
+      c.className = "confirm";
+      const yes = document.createElement("button");
+      yes.type = "button"; yes.textContent = "本当に完了した";
+      yes.onclick = () => {
+        confirming.delete(t);
+        t.done = true; t.doneAt = Date.now();
+        if (t.rolled) say(pick(onRepeat));  // 抽選済みのタスクは引き直せない
+        else { t.rolled = true; bump("done"); const g = rollGacha(); say(g.line, g.rank); celebrate(g.rank, g.line, g.flavor); }
+        save(); render();
+      };
+      const no = document.createElement("button");
+      no.type = "button"; no.className = "no"; no.textContent = "やっぱり嘘でした";
+      no.onclick = () => { confirming.delete(t); say(pick(onCancelConfirm)); render(); };
+      c.append(yes, no);
+      box.append(c);
+    }
+    li.append(cb, box);
+    if (!t.done && !t.excuse && !confirming.has(t)) {            // 言い訳は1タスク1回まで(連打対策)
+      const ex = document.createElement("button");
+      ex.className = "ghost"; ex.textContent = "言い訳";
+      ex.onclick = () => openPicker(t);
+      li.append(ex);
+    }
+    const del = document.createElement("button");
+    del.className = "ghost"; del.textContent = "削除";
+    del.onclick = () => {
+      tasks = tasks.filter(x => x !== t);
+      confirming.delete(t);
+      bump("del");
+      say(pick(onDel)); showEulogy(t); save(); render();
+    };
+    li.append(del);
+    ul.append(li);
+  });
+  const done = tasks.filter(t => t.done).length;
+  $("stats").textContent = tasks.length
+    ? `達成率 ${Math.round(done / tasks.length * 100)}%(${done}/${tasks.length})。` +
+      (done === 0 ? "伸びしろしかありません。" : done === tasks.length ? "暇なんですか?" : "その調子で放置を続けましょう。")
+    : "タスクがありません。人生の勝者ですか、それとも未入力ですか?";
+  const pr = priRemark();
+  if (pr) $("stats").textContent += " " + pr;
+  renderBook(); renderExcuseBook(); renderWeekly();
+  checkAchievements();
+  renderShare();
+  checkNotifications();
+  $("onboard").hidden = !(tasks.length === 0 && !counters.added && !counters.onboarded);
+}
+
+function renderExcuseBook() {
+  const body = $("exBody");
+  body.innerHTML = "";
+  let got = 0;
+  gacha.forEach(g => {
+    body.append(line("bookhead", `${g.rank}(排出率 ${g.rate}%)`));
+    excuses.forEach((ex, i) => {
+      if (excuseRanks[i] !== g.rank) return;
+      const n = excuseSeen[i] || 0;
+      if (n) got++;
+      const row = document.createElement("div");
+      row.className = "bookrow" + (n ? "" : " locked");
+      const b = document.createElement("span");
+      b.className = "badge " + g.rank;
+      b.textContent = g.rank;
+      const box = document.createElement("div");
+      box.append(line("", n ? `${ex}(×${n})` : "？？？(未発見)"));
+      if (n) box.append(line("flavor", excuseFlavors[i]));
+      row.append(b, box);
+      body.append(row);
+    });
+  });
+  $("exCount").textContent = `${got}/${excuses.length}` + (got === excuses.length ? " コンプ!言い訳のプロですね。" : "");
+}
+
+function weekStats() {
+  const wk = Date.now() - 7 * 86400000;
+  const doneN = tasks.filter(t => t.done && t.doneAt && t.doneAt >= wk).length;
+  const addN = tasks.filter(t => t.created >= wk).length;
+  const late = tasks.filter(t => !t.done && overdueDays(t) > 0).length;
+  const oldest = Math.max(0, ...tasks.filter(t => !t.done).map(t => Math.floor((Date.now() - t.created) / 86400000)));
+  const rank = doneN === 0 ? "先延ばしの名人" : doneN <= 2 ? "気まぐれな実行者" : doneN <= 5 ? "意外と働く人" : "どうしたんですか、急に";
+  return { doneN, addN, late, oldest, rank };
+}
+
+function renderWeekly() {
+  const { doneN, addN, late, oldest, rank } = weekStats();
+  const notes = [];
+  if (addN > doneN * 2 && addN > 0) notes.push(`追加${addN}件に対して完了${doneN}件。計画だけは一流です。`);
+  if (late > 0) notes.push(`期限切れが${late}件。締切は参考情報として扱われています。`);
+  if (oldest >= 7) notes.push(`最長の放置は${oldest}日。もはや家族です。`);
+  if (!notes.length) notes.push("特に申し上げることはありません。平穏、あるいは無です。");
+  const body = $("weeklyBody");
+  body.innerHTML = "";
+  body.append(line("wk title", `称号: ${rank}`), line("wk", `過去7日:完了 ${doneN}件 / 追加 ${addN}件 / 期限切れ ${late}件`));
+  notes.forEach(n => body.append(line("wk", n)));
+  $("weeklyTitle").textContent = `「${rank}」`;
+}
+
+function renderBook() {
+  const body = $("bookBody");
+  body.innerHTML = "";
+  let got = 0;
+  gacha.forEach(g => {
+    const h = document.createElement("div");
+    h.className = "bookhead";
+    h.textContent = `${g.rank}(排出率 ${g.rate}%)`;
+    body.append(h);
+    g.lines.forEach((text, i) => {
+      const n = seen[g.rank + "-" + i] || 0;
+      if (n) got++;
+      const row = document.createElement("div");
+      row.className = "bookrow" + (n ? "" : " locked");
+      const b = document.createElement("span");
+      b.className = "badge " + g.rank;
+      b.textContent = g.rank;
+      const t = document.createElement("div");
+      t.append(line("", n ? `${text}(×${n})` : "？？？(未発見)"));
+      if (n) t.append(line("flavor", g.flavors[i]));
+      row.append(b, t);
+      body.append(row);
+    });
+  });
+  const msg = got === totalLines ? "コンプ!暇なんですね。" : "";
+  $("bookCount").textContent = `${got}/${totalLines} ${msg}`;
+}
+
+$("form").onsubmit = e => {
+  e.preventDefault();
+  const text = $("input").value.trim();
+  if (!text) return;
+  const priority = $("priority").value;
+  tasks.unshift({ text, done: false, created: Date.now(), due: $("due").value || null, priority });
+  bump("added");
+  $("input").value = "";
+  $("due").value = "";
+  $("priority").value = "mid";
+  say(priRemark() || pick(onAddPri[priority] || onAdd));
+  save(); render();
+};
+
+$("celClose").onclick = closeCelebrate;
+$("overlay").onclick = e => { if (e.target.id === "overlay") closeCelebrate(); };
+renderDaily();
+renderNotif();
+$("notifBtn").onclick = toggleNotif;
+setInterval(checkNotifications, 60000);   // ページを開いている間、1分ごとに確認
+$("sampleBtn").onclick = addSamples;
+$("shareBtn").onclick = () => openShare(shareText());
+$("copyBtn").onclick = async () => {
+  try { await navigator.clipboard.writeText(shareText() + "\n" + shareUrl()); say("成績をコピーしました。貼り付けて自慢してください。"); }
+  catch (e) { say("コピーできませんでした。シェアボタンのほうをお使いください。"); }
+};
+$("pickerCancel").onclick = closePicker;
+$("picker").onclick = e => { if (e.target.id === "picker") closePicker(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeCelebrate(); closePicker(); } });
+
+render();
+</script>
+</body>
+</html>
