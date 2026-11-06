@@ -125,6 +125,10 @@
   #daily { margin:0 0 16px; padding:10px 12px; border-left:4px solid var(--accent); background:var(--card); border-radius:0 8px 8px 0; font-size:.9rem; }
   #daily .q { font-weight:700; }
   #daily .m { margin-top:4px; color:var(--muted); font-size:.8rem; }
+  .acts { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+  .editForm input[type=text] { width:100%; }
+  .editRow { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  #importBtn { background:transparent; color:var(--fg); border:1px solid var(--line); }
   #notifRow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:-6px 0 14px; }
   #notifBtn { padding:6px 12px; font-size:.85rem; background:transparent; color:var(--fg); border:1px solid var(--line); }
   #notifBtn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -201,7 +205,7 @@
     <summary>言い訳図鑑 <span id="exCount"></span></summary>
     <div id="exBody"></div>
   </details>
-  <div id="overlay" hidden role="dialog" aria-live="assertive">
+  <div id="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="celTitle">
     <div id="confetti"></div>
     <div id="celCard">
       <div id="celTitle"></div>
@@ -212,7 +216,7 @@
       <button id="celClose" type="button">閉じる</button>
     </div>
   </div>
-  <div id="picker" hidden role="dialog">
+  <div id="picker" hidden role="dialog" aria-modal="true" aria-label="言い訳を選ぶ">
     <div id="pickerCard">
       <div class="pickerTitle">どの言い訳にする?</div>
       <div class="pickerHint">引いたことのある言い訳から選べます。新しいのはランダムで。</div>
@@ -228,6 +232,18 @@
   <details id="weekly" class="panel">
     <summary>週間成績表 <span id="weeklyTitle"></span></summary>
     <div id="weeklyBody"></div>
+  </details>
+  <details id="backup" class="panel">
+    <summary>データのバックアップ</summary>
+    <div class="howto">
+      <p>記録をファイルに書き出して、保存できます。別のブラウザや端末でも、そのファイルを読み込めば、続きから使えます。</p>
+      <div class="shareRow">
+        <button id="exportBtn" type="button">📤 書き出す</button>
+        <button id="importBtn" type="button">📥 読み込む</button>
+      </div>
+      <input id="importFile" type="file" accept="application/json,.json" hidden>
+      <p class="flavor">読み込むと、今このブラウザにある記録は、ファイルの内容で置き換わります。</p>
+    </div>
   </details>
   <details id="howto" class="panel">
     <summary>使い方</summary>
@@ -252,7 +268,7 @@
            ・プライベート(シークレット)ウィンドウで使ったとき(閉じると消えます)<br>
            ・ブラウザの容量整理が行われたとき<br>
            ・ブラウザの設定変更やアップデート、端末の初期化などのとき</p>
-        <p>また、<b>別のブラウザや別の端末では、最初からのやり直し</b>になります。バックアップ機能はまだありません。残したい成績は、シェアカードのスクショで保存してください。</p>
+        <p>また、<b>別のブラウザや別の端末では、最初からのやり直し</b>になります。大切な記録は、「データのバックアップ」で、ファイルに書き出しておくと安心です。</p>
       </div>
     </div>
   </details>
@@ -341,7 +357,6 @@ const gacha = [
     "最強の盾も、未完了タスクの一覧の前では無力です。",
   ]},
 ];
-const onDone = null; // 達成時は rollGacha() を使う
 let seen = {};
 try { seen = JSON.parse(localStorage.getItem(KEY + "-seen")) || {}; } catch (e) {}
 
@@ -468,10 +483,13 @@ const CELEB = {
   SSR: { title: "★ 伝説の完了 ★", confetti: 100 },
 };
 let celTimer = null;
+let lastFocus = null;   // ポップアップを閉じたら、元の場所にフォーカスを戻す
 function closeCelebrate() {
+  const wasOpen = !$("overlay").hidden;
   clearInterval(celTimer);
   $("overlay").hidden = true;
   $("confetti").innerHTML = "";
+  if (wasOpen && lastFocus && document.contains(lastFocus)) lastFocus.focus();
 }
 // 文字を1文字ずつ表示。終わったら done を呼ぶ
 function typeInto(el, text, ms, done) {
@@ -505,15 +523,18 @@ function showOverlay({ cls, title, badgeClass, badgeText, text, flavor, emojis, 
   if (cls.includes("rank-SSR") && navigator.vibrate) navigator.vibrate([80, 40, 160, 40, 240]);   // スマホはSSRで震える
   const sb = $("celShare");                 // SR/SSRだけ「自慢する」ボタンを出す
   sb.hidden = !share;
+  sb.textContent = /rank-(SR|SSR)/.test(cls) ? "𝕏 で自慢する" : "𝕏 でシェア";   // 高レア度だけ「自慢」
   sb.onclick = () => openShare(share);
+  lastFocus = document.activeElement;
   ov.hidden = false;
+  $("celClose").focus();                    // キーボードや読み上げで、すぐ操作できるように
   typeInto($("celText"), text, 45, () => typeInto($("celFlavor"), flavor, 30));
 }
 function celebrate(rank, text, flavor) {
   showOverlay({
     cls: "rank-" + rank, title: CELEB[rank].title,
     badgeClass: rank, badgeText: rank, text, flavor,
-    share: rank === "SR" || rank === "SSR" ? `【${rank}】${text}\n#皮肉タスク` : "",
+    share: `【${rank}】${text}\n#皮肉タスク`,
     emojis: rank === "SSR" ? ["🎉", "✨", "🎊", "⭐", "💫", "🌟"] : ["🎉", "✨", "🎊", "⭐"],
     count: CELEB[rank].confetti,
   });
@@ -650,9 +671,8 @@ function renderAch() {
 }
 
 // ---- 削除の弔辞 ----
-function eulogy(t) {
+function eulogy(t, name = `「${t.text}」`) {   // name を渡すと、タスク名の代わりにその言葉を使う(シェア用)
   const d = Math.floor(ageDays(t));
-  const name = `「${t.text}」`;
   if (t.done) return { text: `${name}は、任務を全うして旅立ちました。`, flavor: "完了したタスクを消すのは、片付けではなく、思い出の整理です。" };
   if (d < 1) return { text: `${name}は、生まれたその日に旅立ちました。`, flavor: "存在した時間は短くとも、「追加した」という満足感は確かに残りました。" };
   if (d < 3) return { text: `${name}は、${d}日の短い生涯でした。`, flavor: "まだ何も始まっていませんでした。それがせめてもの救いです。" };
@@ -662,7 +682,11 @@ function eulogy(t) {
 }
 function showEulogy(t) {
   const e = eulogy(t);
-  showOverlay({ cls: "eulogy", title: "お別れの言葉", badgeClass: "", badgeText: "合掌", text: e.text, flavor: e.flavor, emojis: ["🕊️", "🌸", "🕯️"], count: 10 });
+  const tag = "#皮肉タスク";
+  const anon = eulogy(t, "このタスク");       // 投稿文には、タスク名を載せない
+  let share = `${anon.text}\n${anon.flavor}\n${tag}`;
+  if (wlen(share) > 250) share = `${anon.text}\n${tag}`;   // 長いときは解説を省く
+  showOverlay({ cls: "eulogy", title: "お別れの言葉", badgeClass: "", badgeText: "合掌", text: e.text, flavor: e.flavor, emojis: ["🕊️", "🌸", "🕯️"], count: 10, share });
 }
 
 // ---- シェア(X) ----
@@ -838,6 +862,95 @@ function checkNotifications() {
   if (fired) saveNotif();
 }
 
+// ---- タスクの編集 ----
+const editing = new Set();   // 編集中のタスク(保存はしない)
+const onEdit = [
+  "書き直しました。中身は相変わらず未着手ですが。",
+  "表現を整えました。やる気は整っていませんが。",
+  "推敲は完璧です。実行は、これからです。",
+];
+const onExtend = [
+  "締切を延ばしましたね。人類が最も得意とする技です。",
+  "締切の延長を承りました。これで心置きなく放置できますね。",
+];
+function editForm(t) {
+  const f = document.createElement("div");
+  f.className = "editForm";
+  const txt = document.createElement("input");
+  txt.type = "text"; txt.value = t.text; txt.setAttribute("aria-label", "タスク名");
+  const due = document.createElement("input");
+  due.type = "date"; due.value = t.due || ""; due.setAttribute("aria-label", "締切");
+  const pri = document.createElement("select");
+  pri.setAttribute("aria-label", "優先度");
+  Object.entries(PRI).forEach(([v, label]) => {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = label;
+    pri.append(o);
+  });
+  pri.value = t.priority || "mid";
+  const ok = document.createElement("button");
+  ok.type = "button"; ok.textContent = "保存";
+  const ng = document.createElement("button");
+  ng.type = "button"; ng.className = "no"; ng.textContent = "やめる";
+  ok.onclick = () => {
+    const text = txt.value.trim();
+    if (!text) { say("空っぽのタスクは、さすがに達成できません。"); return; }
+    const extended = t.due && due.value && due.value > t.due;   // "YYYY-MM-DD" は文字列のまま大小を比べられる
+    t.text = text; t.due = due.value || null; t.priority = pri.value;
+    editing.delete(t);
+    say(pick(extended ? onExtend : onEdit));
+    save(); render();
+  };
+  ng.onclick = () => { editing.delete(t); render(); };
+  txt.onkeydown = e => {
+    if (e.key === "Enter") ok.onclick();
+    if (e.key === "Escape") { e.stopPropagation(); ng.onclick(); }
+  };
+  const row = document.createElement("div");
+  row.className = "editRow";
+  row.append(due, pri);
+  const btns = document.createElement("div");
+  btns.className = "confirm";
+  btns.append(ok, ng);
+  f.append(txt, row, btns);
+  setTimeout(() => txt.focus(), 0);
+  return f;
+}
+
+// ---- バックアップ(書き出し・読み込み)----
+const isOurKey = k => k === KEY || k.startsWith(KEY + "-");
+function ourKeys() {
+  const ks = [];
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (isOurKey(k)) ks.push(k); }
+  return ks;
+}
+function exportData() {
+  try {
+    const data = {};
+    ourKeys().forEach(k => { data[k] = localStorage.getItem(k); });
+    const payload = { app: "sarcastic-todo", version: 1, exportedAt: new Date().toISOString(), data };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `sarcastic-todo-backup-${nowYmd()}.json`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    say("書き出しました。そのファイルが、あなたの怠惰の全記録です。");
+  } catch (e) { say("書き出せませんでした。ブラウザの設定で、保存領域が使えないのかもしれません。"); }
+}
+async function importData(file) {
+  try {
+    const p = JSON.parse(await file.text());
+    if (!p || p.app !== "sarcastic-todo" || typeof p.data !== "object") throw new Error("format");
+    const entries = Object.entries(p.data).filter(([k, v]) => isOurKey(k) && typeof v === "string");
+    if (!entries.length) throw new Error("empty");
+    if (!confirm("今このブラウザにある記録は、ファイルの内容で置き換わります。読み込みますか?")) return;
+    ourKeys().forEach(k => localStorage.removeItem(k));
+    entries.forEach(([k, v]) => localStorage.setItem(k, v));
+    location.reload();   // 読み込んだ記録で、画面を作り直す
+  } catch (e) { say("読み込めませんでした。このアプリで書き出したファイルか、確認してください。"); }
+}
+
 // ---- 言い訳の選択 ----
 function applyExcuse(t, i) {
   t.excuse = excuses[i];
@@ -867,6 +980,7 @@ function openPicker(t) {
     list.append(b);
   });
   $("picker").hidden = false;
+  rand.focus();
 }
 
 function showExcuse(i) {
@@ -874,7 +988,7 @@ function showExcuse(i) {
     cls: "excuse rank-" + excuseRanks[i], title: excuseTitle[excuseRanks[i]],
     badgeClass: excuseRanks[i], badgeText: excuseRanks[i],
     text: excuses[i], flavor: excuseFlavors[i],
-    share: excuseRanks[i] === "SR" || excuseRanks[i] === "SSR" ? `言い訳【${excuseRanks[i]}】${excuses[i]}\n#皮肉タスク` : "",
+    share: `言い訳【${excuseRanks[i]}】${excuses[i]}\n#皮肉タスク`,
     emojis: ["💭", "💤", "🙈", "🌀"], count: CELEB[excuseRanks[i]].confetti,
   });
 }
@@ -923,6 +1037,7 @@ function render() {
       title.append(p);
     }
     title.append(span);
+    if (editing.has(t)) { box.append(editForm(t)); } else {   // 編集中は、表示の代わりに編集フォーム
     box.append(title);
     if (!t.done) box.append(line("age", ageText(t)));
     if (t.due) box.append(line("due" + (!t.done && overdueDays(t) > 0 ? " overdue" : ""), dueText(t)));
@@ -945,22 +1060,26 @@ function render() {
       c.append(yes, no);
       box.append(c);
     }
-    li.append(cb, box);
-    if (!t.done && !t.excuse && !confirming.has(t)) {            // 言い訳は1タスク1回まで(連打対策)
-      const ex = document.createElement("button");
-      ex.className = "ghost"; ex.textContent = "言い訳";
-      ex.onclick = () => openPicker(t);
-      li.append(ex);
     }
-    const del = document.createElement("button");
-    del.className = "ghost"; del.textContent = "削除";
-    del.onclick = () => {
-      tasks = tasks.filter(x => x !== t);
-      confirming.delete(t);
-      bump("del");
-      say(pick(onDel)); showEulogy(t); save(); render();
+    li.append(cb, box);
+    const acts = document.createElement("div");   // 右側のボタン(縦に並べる)
+    acts.className = "acts";
+    const btn = (label, fn) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "ghost"; b.textContent = label; b.onclick = fn;
+      acts.append(b);
     };
-    li.append(del);
+    if (!editing.has(t)) {
+      if (!t.done && !t.excuse && !confirming.has(t)) btn("言い訳", () => openPicker(t));   // 言い訳は1タスク1回まで(連打対策)
+      btn("編集", () => { editing.add(t); confirming.delete(t); render(); });
+      btn("削除", () => {
+        tasks = tasks.filter(x => x !== t);
+        confirming.delete(t); editing.delete(t);
+        bump("del");
+        say(pick(onDel)); showEulogy(t); save(); render();
+      });
+    }
+    li.append(acts);
     ul.append(li);
   });
   const done = tasks.filter(t => t.done).length;
@@ -1075,6 +1194,9 @@ renderNotif();
 $("notifBtn").onclick = toggleNotif;
 setInterval(checkNotifications, 60000);   // ページを開いている間、1分ごとに確認
 $("sampleBtn").onclick = addSamples;
+$("exportBtn").onclick = exportData;
+$("importBtn").onclick = () => $("importFile").click();
+$("importFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) importData(f); };
 $("shareBtn").onclick = () => openShare(shareText());
 $("copyBtn").onclick = async () => {
   try { await navigator.clipboard.writeText(shareText() + "\n" + shareUrl()); say("成績をコピーしました。貼り付けて自慢してください。"); }
