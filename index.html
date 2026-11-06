@@ -513,7 +513,7 @@ function celebrate(rank, text, flavor) {
   showOverlay({
     cls: "rank-" + rank, title: CELEB[rank].title,
     badgeClass: rank, badgeText: rank, text, flavor,
-    share: rank === "SR" || rank === "SSR" ? `【${rank}】${text}\n#どうせやらないタスク管理` : "",
+    share: rank === "SR" || rank === "SSR" ? `【${rank}】${text}\n#皮肉タスク` : "",
     emojis: rank === "SSR" ? ["🎉", "✨", "🎊", "⭐", "💫", "🌟"] : ["🎉", "✨", "🎊", "⭐"],
     count: CELEB[rank].confetti,
   });
@@ -693,7 +693,7 @@ function shareText() {
     `達成率 ${s.pct}%(${s.done}/${s.total}) / 最長放置 ${s.oldest}日`,
     `実績 ${s.ach}/${achievements.length} ・ お祝い ${s.book}/${totalLines} ・ 言い訳 ${s.ex}/${excuses.length}`,
   ];
-  const tag = "#どうせやらないタスク管理";
+  const tag = "#皮肉タスク";
   if (best && wlen([...lines, best, tag].join("\n")) <= 250) lines.push(best);   // 長すぎるときはベストを省く
   lines.push(tag);
   return lines.join("\n");
@@ -874,7 +874,7 @@ function showExcuse(i) {
     cls: "excuse rank-" + excuseRanks[i], title: excuseTitle[excuseRanks[i]],
     badgeClass: excuseRanks[i], badgeText: excuseRanks[i],
     text: excuses[i], flavor: excuseFlavors[i],
-    share: excuseRanks[i] === "SR" || excuseRanks[i] === "SSR" ? `言い訳【${excuseRanks[i]}】${excuses[i]}\n#どうせやらないタスク管理` : "",
+    share: excuseRanks[i] === "SR" || excuseRanks[i] === "SSR" ? `言い訳【${excuseRanks[i]}】${excuses[i]}\n#皮肉タスク` : "",
     emojis: ["💭", "💤", "🙈", "🌀"], count: CELEB[excuseRanks[i]].confetti,
   });
 }
