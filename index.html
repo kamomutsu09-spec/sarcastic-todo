@@ -122,6 +122,11 @@
   .flavor { color:var(--muted); font-size:.8rem; font-style:italic; }
   #celText { min-height:5.5em; font-size:1.45rem; font-weight:800; line-height:1.6; letter-spacing:.04em; color:var(--accent); }
   .excuse { font-size:.85rem; font-weight:700; color:var(--accent); }
+  .newTag { display:inline-block; margin-right:6px; padding:0 7px; border-radius:6px; font-size:.7rem; font-weight:900; color:#fff; background:linear-gradient(90deg,#ff3b3b,#ff9f1a); animation:newpulse .8s ease-in-out infinite alternate; }
+  .newTag[hidden] { display:none; }
+  #celNew { margin-left:8px; padding:2px 10px; font-size:1rem; vertical-align:middle; }
+  @keyframes newpulse { to { transform:scale(1.14); } }
+  @media (prefers-reduced-motion: reduce) { .newTag { animation:none; } }
   #daily { margin:0 0 16px; padding:10px 12px; border-left:4px solid var(--accent); background:var(--card); border-radius:0 8px 8px 0; font-size:.9rem; }
   #daily .q { font-weight:700; }
   #daily .m { margin-top:4px; color:var(--muted); font-size:.8rem; }
@@ -198,18 +203,18 @@
     <button id="copyBtn" type="button">テキストをコピー</button>
   </div>
   <details id="book" class="panel">
-    <summary>お祝い図鑑 <span id="bookCount"></span></summary>
+    <summary>お祝い図鑑 <span id="bookCount"></span> <span id="bookNew" class="newTag" hidden>NEW</span></summary>
     <div id="bookBody"></div>
   </details>
   <details id="exbook" class="panel">
-    <summary>言い訳図鑑 <span id="exCount"></span></summary>
+    <summary>言い訳図鑑 <span id="exCount"></span> <span id="exNew" class="newTag" hidden>NEW</span></summary>
     <div id="exBody"></div>
   </details>
   <div id="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="celTitle">
     <div id="confetti"></div>
     <div id="celCard">
       <div id="celTitle"></div>
-      <span id="celBadge" class="badge"></span>
+      <span id="celBadge" class="badge"></span><span id="celNew" class="newTag" hidden>NEW!</span>
       <p id="celText"></p>
       <p id="celFlavor"></p>
       <button id="celShare" type="button" hidden>𝕏 で自慢する</button>
@@ -366,6 +371,8 @@ function rollGacha() {
   const i = Math.floor(Math.random() * tier.lines.length);
   const line = tier.lines[i];
   const id = tier.rank + "-" + i;           // 文言を直しても記録が消えないよう ID で保存
+  const isNew = !seen[id];                  // 初めて出たお祝いか
+  if (isNew) markNew("g-" + id);
   seen[id] = (seen[id] || 0) + 1;           // 値は排出回数
   try { localStorage.setItem(KEY + "-seen", JSON.stringify(seen)); } catch (e) {}
   const order = { N: 0, R: 1, SR: 2, SSR: 3 };   // シェアカード用に、一番レアなお祝いを記録
@@ -373,7 +380,7 @@ function rollGacha() {
     bestPull = { rank: tier.rank, text: line };
     try { localStorage.setItem(KEY + "-best", JSON.stringify(bestPull)); } catch (e) {}
   }
-  return { rank: tier.rank, line, flavor: tier.flavors[i] };
+  return { rank: tier.rank, line, flavor: tier.flavors[i], isNew };
 }
 const totalLines = gacha.reduce((n, g) => n + g.lines.length, 0);
 const onRepeat = [
@@ -503,13 +510,14 @@ function typeInto(el, text, ms, done) {
   }, ms);
 }
 // 演出の共通部分(お祝いと言い訳で共用)
-function showOverlay({ cls, title, badgeClass, badgeText, text, flavor, emojis, count, share }) {
+function showOverlay({ cls, title, badgeClass, badgeText, text, flavor, emojis, count, share, isNew }) {
   const ov = $("overlay");
   ov.className = cls;
   $("celTitle").textContent = title;
   $("celBadge").className = "badge " + badgeClass;
   $("celBadge").textContent = badgeText;
   $("celFlavor").textContent = "";
+  $("celNew").hidden = !isNew;              // 初めて出たときだけ「NEW!」
   const c = $("confetti");
   c.innerHTML = "";
   for (let i = 0; i < count; i++) {
@@ -530,10 +538,10 @@ function showOverlay({ cls, title, badgeClass, badgeText, text, flavor, emojis, 
   $("celClose").focus();                    // キーボードや読み上げで、すぐ操作できるように
   typeInto($("celText"), text, 45, () => typeInto($("celFlavor"), flavor, 30));
 }
-function celebrate(rank, text, flavor) {
+function celebrate(rank, text, flavor, isNew) {
   showOverlay({
     cls: "rank-" + rank, title: CELEB[rank].title,
-    badgeClass: rank, badgeText: rank, text, flavor,
+    badgeClass: rank, badgeText: rank, text, flavor, isNew,
     share: `【${rank}】${text}\n#皮肉タスク`,
     emojis: rank === "SSR" ? ["🎉", "✨", "🎊", "⭐", "💫", "🌟"] : ["🎉", "✨", "🎊", "⭐"],
     count: CELEB[rank].confetti,
@@ -951,15 +959,38 @@ async function importData(file) {
   } catch (e) { say("読み込めませんでした。このアプリで書き出したファイルか、確認してください。"); }
 }
 
+// ---- NEW の印(まだ図鑑で見ていない、初めて出たもの)----
+let newMarks = {};   // 例: { "g-SSR-1": true, "e-14": true }  g=お祝い e=言い訳
+try { newMarks = JSON.parse(localStorage.getItem(KEY + "-new")) || {}; } catch (e) {}
+function saveNew() { try { localStorage.setItem(KEY + "-new", JSON.stringify(newMarks)); } catch (e) {} }
+function markNew(key) { newMarks[key] = true; saveNew(); }
+const hasNew = prefix => Object.keys(newMarks).some(k => k.startsWith(prefix));
+function newTag() {
+  const s = document.createElement("span");
+  s.className = "newTag"; s.textContent = "NEW";
+  return s;
+}
+function updateNewFlags() {
+  $("bookNew").hidden = !hasNew("g-");
+  $("exNew").hidden = !hasNew("e-");
+}
+function clearNew(prefix) {
+  Object.keys(newMarks).filter(k => k.startsWith(prefix)).forEach(k => delete newMarks[k]);
+  saveNew();
+  renderBook(); renderExcuseBook(); updateNewFlags();
+}
+
 // ---- 言い訳の選択 ----
 function applyExcuse(t, i) {
+  const isNew = !excuseSeen[i];             // 初めて出た言い訳か
+  if (isNew) markNew("e-" + i);
   t.excuse = excuses[i];
   t.excuseRank = excuseRanks[i];
   bump("excuse");
   excuseSeen[i] = (excuseSeen[i] || 0) + 1;
   try { localStorage.setItem(KEY + "-excuses", JSON.stringify(excuseSeen)); } catch (e) {}
   closePicker();
-  say(pick(onExcuse)); showExcuse(i); save(); render();
+  say(pick(onExcuse)); showExcuse(i, isNew); save(); render();
 }
 function closePicker() { $("picker").hidden = true; }
 function openPicker(t) {
@@ -983,11 +1014,11 @@ function openPicker(t) {
   rand.focus();
 }
 
-function showExcuse(i) {
+function showExcuse(i, isNew) {
   showOverlay({
     cls: "excuse rank-" + excuseRanks[i], title: excuseTitle[excuseRanks[i]],
     badgeClass: excuseRanks[i], badgeText: excuseRanks[i],
-    text: excuses[i], flavor: excuseFlavors[i],
+    text: excuses[i], flavor: excuseFlavors[i], isNew,
     share: `言い訳【${excuseRanks[i]}】${excuses[i]}\n#皮肉タスク`,
     emojis: ["💭", "💤", "🙈", "🌀"], count: CELEB[excuseRanks[i]].confetti,
   });
@@ -1051,7 +1082,7 @@ function render() {
         confirming.delete(t);
         t.done = true; t.doneAt = Date.now();
         if (t.rolled) say(pick(onRepeat));  // 抽選済みのタスクは引き直せない
-        else { t.rolled = true; bump("done"); const g = rollGacha(); say(g.line, g.rank); celebrate(g.rank, g.line, g.flavor); }
+        else { t.rolled = true; bump("done"); const g = rollGacha(); say(g.line, g.rank); celebrate(g.rank, g.line, g.flavor, g.isNew); }
         save(); render();
       };
       const no = document.createElement("button");
@@ -1089,7 +1120,7 @@ function render() {
     : "タスクがありません。人生の勝者ですか、それとも未入力ですか?";
   const pr = priRemark();
   if (pr) $("stats").textContent += " " + pr;
-  renderBook(); renderExcuseBook(); renderWeekly();
+  renderBook(); renderExcuseBook(); renderWeekly(); updateNewFlags();
   checkAchievements();
   renderShare();
   checkNotifications();
@@ -1112,7 +1143,9 @@ function renderExcuseBook() {
       b.className = "badge " + g.rank;
       b.textContent = g.rank;
       const box = document.createElement("div");
-      box.append(line("", n ? `${ex}(×${n})` : "？？？(未発見)"));
+      const head = line("", n ? `${ex}(×${n})` : "？？？(未発見)");
+      if (n && newMarks["e-" + i]) head.prepend(newTag());
+      box.append(head);
       if (n) box.append(line("flavor", excuseFlavors[i]));
       row.append(b, box);
       body.append(row);
@@ -1163,7 +1196,9 @@ function renderBook() {
       b.className = "badge " + g.rank;
       b.textContent = g.rank;
       const t = document.createElement("div");
-      t.append(line("", n ? `${text}(×${n})` : "？？？(未発見)"));
+      const head = line("", n ? `${text}(×${n})` : "？？？(未発見)");
+      if (n && newMarks["g-" + g.rank + "-" + i]) head.prepend(newTag());
+      t.append(head);
       if (n) t.append(line("flavor", g.flavors[i]));
       row.append(b, t);
       body.append(row);
@@ -1194,6 +1229,9 @@ renderNotif();
 $("notifBtn").onclick = toggleNotif;
 setInterval(checkNotifications, 60000);   // ページを開いている間、1分ごとに確認
 $("sampleBtn").onclick = addSamples;
+// 図鑑を「閉じたとき」に NEW を消す(開いている間は、どれが新しいか見える)
+$("book").addEventListener("toggle", () => { if (!$("book").open) clearNew("g-"); });
+$("exbook").addEventListener("toggle", () => { if (!$("exbook").open) clearNew("e-"); });
 $("exportBtn").onclick = exportData;
 $("importBtn").onclick = () => $("importFile").click();
 $("importFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) importData(f); };
