@@ -532,7 +532,8 @@ function showOverlay({ cls, title, badgeClass, badgeText, text, flavor, emojis, 
   const sb = $("celShare");                 // SR/SSRだけ「自慢する」ボタンを出す
   sb.hidden = !share;
   sb.textContent = /rank-(SR|SSR)/.test(cls) ? "𝕏 で自慢する" : "𝕏 でシェア";   // 高レア度だけ「自慢」
-  sb.onclick = () => openShare(share, shareId ? resultUrl(shareId) : undefined);
+  sb.onclick = () => shareResult(share, shareId);
+  prepareShareFile(shareId);                // スマホ用: 縦長の画像を先に読み込んでおく
   lastFocus = document.activeElement;
   ov.hidden = false;
   $("celClose").focus();                    // キーボードや読み上げで、すぐ操作できるように
@@ -731,6 +732,33 @@ function shareText() {
   return lines.join("\n");
 }
 const resultUrl = id => SITE_URL + "r/" + id + ".html";   // 結果ごとの共有ページ(専用のプレビュー画像つき)
+
+// スマホでは、縦長の画像を添付して共有する(リンクカードは横長に固定されるため)。
+// 共有メニュー(Web Share)は、タップした直後でないと開けない。画像は、ポップアップを開いた時点で先に読み込んでおく。
+let shareFile = null, shareFileId = null, shareToken = 0;
+function canShareFiles() {
+  return typeof navigator.share === "function" && typeof navigator.canShare === "function"
+    && matchMedia("(pointer: coarse)").matches && location.protocol.startsWith("http");
+}
+async function prepareShareFile(id) {
+  const token = ++shareToken;
+  shareFile = null; shareFileId = null;
+  if (!id || !canShareFiles()) return;
+  try {
+    const r = await fetch(`r/${id}-v.jpg?v=1`);
+    if (!r.ok) return;
+    const f = new File([await r.blob()], `${id}.jpg`, { type: "image/jpeg" });
+    if (token === shareToken && navigator.canShare({ files: [f] })) { shareFile = f; shareFileId = id; }   // 別の結果に切り替わっていたら捨てる
+  } catch (e) { /* 読み込めなければ、リンクでの共有になる */ }
+}
+function shareResult(text, id) {
+  if (shareFile && shareFileId === id) {
+    navigator.share({ files: [shareFile], text: text + "\n" + shareUrl() })
+      .catch(e => { if (!e || e.name !== "AbortError") openShare(text, id ? resultUrl(id) : undefined); });   // 取り消し以外の失敗は、リンクで共有
+    return;
+  }
+  openShare(text, id ? resultUrl(id) : undefined);
+}
 function openShare(text, url) {
   const u = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(url || shareUrl());
   window.open(u, "_blank", "noopener");
