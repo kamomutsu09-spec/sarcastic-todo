@@ -380,7 +380,7 @@ function rollGacha() {
     bestPull = { rank: tier.rank, text: line };
     try { localStorage.setItem(KEY + "-best", JSON.stringify(bestPull)); } catch (e) {}
   }
-  return { rank: tier.rank, line, flavor: tier.flavors[i], isNew };
+  return { rank: tier.rank, line, flavor: tier.flavors[i], isNew, id };
 }
 const totalLines = gacha.reduce((n, g) => n + g.lines.length, 0);
 const onRepeat = [
@@ -510,7 +510,7 @@ function typeInto(el, text, ms, done) {
   }, ms);
 }
 // 演出の共通部分(お祝いと言い訳で共用)
-function showOverlay({ cls, title, badgeClass, badgeText, text, flavor, emojis, count, share, isNew }) {
+function showOverlay({ cls, title, badgeClass, badgeText, text, flavor, emojis, count, share, isNew, shareId }) {
   const ov = $("overlay");
   ov.className = cls;
   $("celTitle").textContent = title;
@@ -532,16 +532,16 @@ function showOverlay({ cls, title, badgeClass, badgeText, text, flavor, emojis, 
   const sb = $("celShare");                 // SR/SSRだけ「自慢する」ボタンを出す
   sb.hidden = !share;
   sb.textContent = /rank-(SR|SSR)/.test(cls) ? "𝕏 で自慢する" : "𝕏 でシェア";   // 高レア度だけ「自慢」
-  sb.onclick = () => openShare(share);
+  sb.onclick = () => openShare(share, shareId ? resultUrl(shareId) : undefined);
   lastFocus = document.activeElement;
   ov.hidden = false;
   $("celClose").focus();                    // キーボードや読み上げで、すぐ操作できるように
   typeInto($("celText"), text, 45, () => typeInto($("celFlavor"), flavor, 30));
 }
-function celebrate(rank, text, flavor, isNew) {
+function celebrate(rank, text, flavor, isNew, id) {
   showOverlay({
     cls: "rank-" + rank, title: CELEB[rank].title,
-    badgeClass: rank, badgeText: rank, text, flavor, isNew,
+    badgeClass: rank, badgeText: rank, text, flavor, isNew, shareId: id ? "g-" + id : undefined,
     share: `【${rank}】${text}\n#皮肉タスク`,
     emojis: rank === "SSR" ? ["🎉", "✨", "🎊", "⭐", "💫", "🌟"] : ["🎉", "✨", "🎊", "⭐"],
     count: CELEB[rank].confetti,
@@ -730,8 +730,9 @@ function shareText() {
   lines.push(tag);
   return lines.join("\n");
 }
-function openShare(text) {
-  const u = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(shareUrl());
+const resultUrl = id => SITE_URL + "r/" + id + ".html";   // 結果ごとの共有ページ(専用のプレビュー画像つき)
+function openShare(text, url) {
+  const u = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(url || shareUrl());
   window.open(u, "_blank", "noopener");
 }
 function renderShare() {
@@ -1018,7 +1019,7 @@ function showExcuse(i, isNew) {
   showOverlay({
     cls: "excuse rank-" + excuseRanks[i], title: excuseTitle[excuseRanks[i]],
     badgeClass: excuseRanks[i], badgeText: excuseRanks[i],
-    text: excuses[i], flavor: excuseFlavors[i], isNew,
+    text: excuses[i], flavor: excuseFlavors[i], isNew, shareId: "e-" + i,
     share: `言い訳【${excuseRanks[i]}】${excuses[i]}\n#皮肉タスク`,
     emojis: ["💭", "💤", "🙈", "🌀"], count: CELEB[excuseRanks[i]].confetti,
   });
@@ -1082,7 +1083,7 @@ function render() {
         confirming.delete(t);
         t.done = true; t.doneAt = Date.now();
         if (t.rolled) say(pick(onRepeat));  // 抽選済みのタスクは引き直せない
-        else { t.rolled = true; bump("done"); const g = rollGacha(); say(g.line, g.rank); celebrate(g.rank, g.line, g.flavor, g.isNew); }
+        else { t.rolled = true; bump("done"); const g = rollGacha(); say(g.line, g.rank); celebrate(g.rank, g.line, g.flavor, g.isNew, g.id); }
         save(); render();
       };
       const no = document.createElement("button");
